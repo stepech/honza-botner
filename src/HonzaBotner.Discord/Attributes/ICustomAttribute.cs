@@ -1,9 +1,9 @@
 ﻿using System.Threading.Tasks;
-using DSharpPlus.Entities;
+using Discord;
 
 namespace HonzaBotner.Discord.Attributes;
 
 public interface ICustomAttribute
 {
-    public Task<DiscordEmbed> BuildFailedCheckDiscordEmbed();
+    public Task<Embed> BuildFailedCheckDiscordEmbed();
 }

@@ -13,7 +13,6 @@ using HonzaBotner.Services.Contract.Dto;
 
 namespace HonzaBotner.Discord.Services.Commands;
 
-[SlashModuleLifespan(SlashModuleLifespan.Scoped)]
 public class EmoteCommands : ApplicationCommandModule
 {
 

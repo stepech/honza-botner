@@ -1,13 +1,13 @@
 ﻿using System.Threading.Tasks;
-using DSharpPlus.Entities;
+using Discord;
 using HonzaBotner.Services.Contract.Dto;
 
 namespace HonzaBotner.Discord.Managers;
 
 public interface IReminderManager
 {
-    Task<DiscordEmbed> CreateDmReminderEmbedAsync(Reminder reminder);
-    Task<DiscordEmbed> CreateReminderEmbedAsync(Reminder reminder);
-    Task<DiscordEmbed> CreateExpiredReminderEmbedAsync(Reminder reminder);
-    Task<DiscordEmbed> CreateCanceledReminderEmbedAsync(Reminder reminder);
+    Task<Embed> CreateDmReminderEmbedAsync(Reminder reminder);
+    Task<Embed> CreateReminderEmbedAsync(Reminder reminder);
+    Task<Embed> CreateExpiredReminderEmbedAsync(Reminder reminder);
+    Task<Embed> CreateCanceledReminderEmbedAsync(Reminder reminder);
 }

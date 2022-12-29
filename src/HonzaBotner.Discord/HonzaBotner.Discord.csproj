@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
-    <PackageReference Include="DSharpPlus" />
-    <PackageReference Include="DSharpPlus.Interactivity" />
-    <PackageReference Include="DSharpPlus.SlashCommands" />
+    <PackageReference Include="Discord.Net" />
+    <PackageReference Include="Discord.Net.Core" />
+    <PackageReference Include="Discord.Net.Interactions" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />

@@ -1,9 +1,8 @@
 ﻿using System;
-using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using DSharpPlus;
-using DSharpPlus.Entities;
+using Discord;
+using Discord.WebSocket;
 using HonzaBotner.Discord.Managers;
 using HonzaBotner.Discord.Services.Options;
 using Microsoft.Extensions.Logging;
@@ -26,16 +25,17 @@ public class VoiceManager : IVoiceManager
     }
 
     public async Task AddNewVoiceChannelAsync(
-        DiscordChannel channelToCloneFrom, DiscordMember member,
+        IVoiceChannel channelToCloneFrom, IGuildUser member,
         string? name, long? limit, bool? isPublic)
     {
         name = ConvertStringToValidState(name);
 
         try
         {
+            // TODO: Can not clone channel
             string? userName = ConvertStringToValidState(member.Nickname, member.Username);
-            DiscordChannel newChannel =
-                await channelToCloneFrom.CloneAsync($"Member {userName} created new voice channel.");
+            SocketVoiceChannel newChannel =
+                await channelToCloneFrom.($"Member {userName} created new voice channel.");
 
             await EditChannelAsync(false, newChannel, name, limit, isPublic, userName);
 

@@ -1,6 +1,7 @@
 using System.Text;
 using System.Threading.Tasks;
-using DSharpPlus.Entities;
+using Discord;
+using Discord.WebSocket;
 using HonzaBotner.Services.Contract;
 using HonzaBotner.Services.Contract.Dto;
 using Microsoft.Extensions.Logging;
@@ -36,13 +37,13 @@ public class DiscordEmbedPublisher : IPublisherService
 
     public async Task Publish(News news, params ulong[] channels)
     {
-        DiscordGuild guild = await _guildProvider.GetCurrentGuildAsync();
+        SocketGuild guild = _guildProvider.GetCurrentGuild();
 
-        DiscordEmbedBuilder builder = new()
+        EmbedBuilder builder = new()
         {
             // Embed titles are limited to 256 characters
             Title = Limit(news.Title, 256),
-            Author = new DiscordEmbedBuilder.EmbedAuthor()
+            Author = new EmbedAuthorBuilder()
             {
                 // The author name is limited to 256 characters
                 Name = Limit(news.Author, 256)
@@ -53,20 +54,21 @@ public class DiscordEmbedPublisher : IPublisherService
             Description = Limit(news.Content, 4096),
             Url = news.Link,
             Timestamp = news.CreatedAt,
-            Color = Optional.FromValue(DiscordColor.Blurple)
+            Color = Color.DarkPurple
         };
 
-        DiscordEmbed embed = builder.Build();
+        Embed embed = builder.Build();
 
         foreach (ulong channelId in channels)
         {
-            if (!guild.Channels.TryGetValue(channelId, out DiscordChannel? channel) || channel == null)
+            if (guild.GetChannel(channelId) is not ITextChannel channel)
             {
                 _logger.LogWarning("Couldn't find channel with id {ChannelId} for publishing news",
                     channelId);
+                continue;
             }
 
-            await channel!.SendMessageAsync(embed);
+            await channel.SendMessageAsync(embed: embed);
         }
     }
 }

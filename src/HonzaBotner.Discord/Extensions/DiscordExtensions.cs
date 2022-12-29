@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Threading.Tasks;
-using DSharpPlus.Entities;
+using Discord;
 
 namespace HonzaBotner.Discord.Extensions;
 
 public static class DiscordExtensions
 {
-    public static async Task ReportException(this DiscordChannel channel, string source, Exception exception)
+    public static async Task ReportException(this ITextChannel channel, string source, Exception exception)
     {
         static string Truncate(string value, int maxLength)
         {
@@ -15,9 +15,9 @@ public static class DiscordExtensions
         }
 
         await channel.SendMessageAsync(
-            new DiscordEmbedBuilder()
+            embed: new EmbedBuilder()
                 .WithTitle($"{source} - {exception.GetType().Name}")
-                .WithColor(DiscordColor.Red)
+                .WithColor(Color.Red)
                 .AddField("Message:", exception.Message, true)
                 .AddField("Stack Trace:", Truncate(exception.StackTrace ?? "No stack trace", 500))
                 .WithTimestamp(DateTime.UtcNow)

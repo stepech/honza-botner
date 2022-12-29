@@ -1,5 +1,5 @@
 using System.Threading.Tasks;
-using DSharpPlus.Entities;
+using Discord;
 
 namespace HonzaBotner.Discord.Managers;
 
@@ -9,12 +9,12 @@ public interface IButtonManager
     /// Sets up default buttons on verification messages
     /// </summary>
     /// <param name="target">Target message where the buttons will be added</param>
-    Task SetupVerificationButtons(DiscordMessage target);
+    Task SetupVerificationButtons(IUserMessage target);
 
     /// <summary>
     /// Removes all button interactions from provided message
     /// </summary>
     /// <param name="target">Target message</param>
     /// <returns></returns>
-    Task RemoveButtonsFromMessage(DiscordMessage target);
+    Task RemoveButtonsFromMessage(IUserMessage target);
 }

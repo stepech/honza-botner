@@ -2,14 +2,14 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using DSharpPlus.Entities;
+using Discord;
+using Discord.WebSocket;
 using HonzaBotner.Discord;
 using HonzaBotner.Services.Contract;
 using HonzaBotner.Services.Contract.Dto;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using DiscordRole = HonzaBotner.Services.Contract.Dto.DiscordRole;
-using DRole = DSharpPlus.Entities.DiscordRole;
 
 namespace HonzaBotner.Services;
 
@@ -33,30 +33,10 @@ public sealed class DiscordRoleManager : IDiscordRoleManager
 
     public async Task<bool> GrantRolesAsync(ulong userId, IReadOnlySet<DiscordRole> discordRoles)
     {
-        DiscordGuild guild = await _guildProvider.GetCurrentGuildAsync();
+        SocketGuild guild = _guildProvider.GetCurrentGuild();
 
-        List<DRole> roles = new();
-        foreach (DiscordRole discordRole in discordRoles)
-        {
-            DRole? role = guild.GetRole(discordRole.RoleId);
-            if (role == null)
-            {
-                _logger.LogWarning("Couldn't map all roles. Please verify your config file");
-                return false;
-            }
-
-            roles.Add(role);
-        }
-
-        // TODO: job queue
-        Task _ = Task.Run(async () =>
-        {
-            DiscordMember member = await guild.GetMemberAsync(userId);
-            foreach (DRole role in roles)
-            {
-                await member.GrantRoleAsync(role, "Auth");
-            }
-        });
+        IGuildUser member = guild.GetUser(userId);
+        await member.AddRolesAsync(discordRoles.Select(role => role.RoleId));
 
         return true;
     }
@@ -64,7 +44,7 @@ public sealed class DiscordRoleManager : IDiscordRoleManager
     public async Task<bool> RevokeRolesPoolAsync(ulong userId, RolesPool rolesPool)
     {
         bool returnValue = true;
-        DiscordGuild guild = await _guildProvider.GetCurrentGuildAsync();
+        SocketGuild guild = _guildProvider.GetCurrentGuild();
 
         IDictionary<string, ulong[]> rolesMapping = rolesPool switch
         {
@@ -73,13 +53,13 @@ public sealed class DiscordRoleManager : IDiscordRoleManager
             _ => throw new ArgumentOutOfRangeException(nameof(rolesPool), rolesPool, null)
         };
 
-        List<DRole> roles = new();
+        List<SocketRole> roles = new();
 
         foreach ((string? key, ulong[] roleIds) in rolesMapping)
         {
             foreach (ulong value in roleIds)
             {
-                DRole? role = guild.GetRole(value);
+                SocketRole? role = guild.GetRole(value);
                 if (role == null)
                 {
                     returnValue = false;
@@ -95,14 +75,14 @@ public sealed class DiscordRoleManager : IDiscordRoleManager
         }
 
         // TODO: job queue
-        DiscordMember member = await guild.GetMemberAsync(userId);
-        foreach (DRole role in roles)
+        IGuildUser member = guild.GetUser(userId);
+        foreach (SocketRole role in roles)
         {
-            if (member.Roles.Contains(role)
+            if (member.RoleIds.Contains(role.Id)
                 // Don't remove any of the authenticated roles.
                 && !_roleConfig.AuthenticatedRoleIds.Contains(role.Id))
             {
-                await member.RevokeRoleAsync(role, "Auth");
+                await member.RemoveRoleAsync(role);
             }
         }
 
@@ -140,16 +120,16 @@ public sealed class DiscordRoleManager : IDiscordRoleManager
 
     public async Task RevokeHostRolesAsync(ulong userId)
     {
-        DiscordGuild guild = await _guildProvider.GetCurrentGuildAsync();
-        DiscordMember member = await guild.GetMemberAsync(userId);
+        SocketGuild guild = _guildProvider.GetCurrentGuild();
+        IGuildUser member = guild.GetUser(userId);
 
         // TODO: somehow merge with Revoke part later.
         foreach (ulong roleId in _roleConfig.HostRoleIds)
         {
             try
             {
-                DRole role = guild.GetRole(roleId);
-                await member.RevokeRoleAsync(role);
+                SocketRole role = guild.GetRole(roleId);
+                await member.RemoveRoleAsync(role);
             }
             catch (Exception e)
             {
@@ -160,12 +140,12 @@ public sealed class DiscordRoleManager : IDiscordRoleManager
 
     public async Task<bool> IsUserDiscordAuthenticated(ulong userId)
     {
-        DiscordGuild _guild = await _guildProvider.GetCurrentGuildAsync();
+        SocketGuild _guild = _guildProvider.GetCurrentGuild();
 
         try
         {
-            DiscordMember member = await _guild.GetMemberAsync(userId);
-            if (_roleConfig.AuthenticatedRoleIds.Any(roleId => member.Roles.Select(role => role.Id).Contains(roleId)))
+            IGuildUser member = _guild.GetUser(userId);
+            if (_roleConfig.AuthenticatedRoleIds.Any(roleId => member.RoleIds.Contains(roleId)))
             {
                 return true;
             }

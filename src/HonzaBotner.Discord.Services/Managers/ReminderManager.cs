@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
-using DSharpPlus.Entities;
+using Discord;
 using HonzaBotner.Discord.Managers;
 using HonzaBotner.Services.Contract.Dto;
 using Microsoft.Extensions.Logging;
@@ -18,66 +18,66 @@ public class ReminderManager : IReminderManager
         _logger = logger;
     }
 
-    public async Task<DiscordEmbed> CreateDmReminderEmbedAsync(Reminder reminder)
+    public async Task<Embed> CreateDmReminderEmbedAsync(Reminder reminder)
     {
-        var guild = await _guildProvider.GetCurrentGuildAsync();
+        var guild = _guildProvider.GetCurrentGuild();
 
         return await _CreateReminderEmbed(
             $"🔔 Reminder from {guild.Name} Discord",
             reminder,
-            DiscordColor.Yellow,
+            Color.Gold,
             true
         );
     }
 
-    public async Task<DiscordEmbed> CreateReminderEmbedAsync(Reminder reminder)
+    public async Task<Embed> CreateReminderEmbedAsync(Reminder reminder)
     {
         return await _CreateReminderEmbed(
             "🔔 Reminder",
             reminder,
-            DiscordColor.Yellow,
+            Color.Gold,
             true
         );
     }
 
-    public async Task<DiscordEmbed> CreateExpiredReminderEmbedAsync(Reminder reminder)
+    public async Task<Embed> CreateExpiredReminderEmbedAsync(Reminder reminder)
     {
         return await _CreateReminderEmbed(
             "🔕 Expired reminder",
             reminder,
-            DiscordColor.Grayple
+            Color.DarkGrey
         );
     }
 
-    public async Task<DiscordEmbed> CreateCanceledReminderEmbedAsync(Reminder reminder)
+    public async Task<Embed> CreateCanceledReminderEmbedAsync(Reminder reminder)
     {
         return await _CreateReminderEmbed(
             "🛑 Canceled reminder",
             reminder,
-            DiscordColor.Red
+            Color.Red
         );
     }
 
-    private async Task<DiscordEmbed> _CreateReminderEmbed(
+    private async Task<Embed> _CreateReminderEmbed(
         string title,
         Reminder reminder,
-        DiscordColor color,
+        Color color,
         bool useDateTime = false
     )
     {
-        var guild = await _guildProvider.GetCurrentGuildAsync();
+        var guild = _guildProvider.GetCurrentGuild();
 
-        DiscordMember? author = await guild.GetMemberAsync(reminder.OwnerId);
+        IGuildUser? author = guild.GetUser(reminder.OwnerId);
 
         string datetime = useDateTime
             ? "\n\n<t:" + Math.Floor(reminder.DateTime.Subtract(new DateTime(1970, 1, 1)).TotalSeconds) + ":f>"
             : "";
 
-        var embedBuilder = new DiscordEmbedBuilder()
+        var embedBuilder = new EmbedBuilder()
             .WithTitle(title)
             .WithAuthor(
                 author?.DisplayName ?? "Unknown user",
-                iconUrl: author?.AvatarUrl)
+                iconUrl: author?.GetAvatarUrl())
             .WithDescription(reminder.Content + datetime)
             .WithColor(color);
 

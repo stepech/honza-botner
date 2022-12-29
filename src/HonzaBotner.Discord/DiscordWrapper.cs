@@ -1,9 +1,7 @@
 using System;
-using DSharpPlus;
-using DSharpPlus.Interactivity;
-using DSharpPlus.Interactivity.Enums;
-using DSharpPlus.Interactivity.Extensions;
-using DSharpPlus.SlashCommands;
+using Discord;
+using Discord.Interactions;
+using Discord.WebSocket;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -11,34 +9,25 @@ namespace HonzaBotner.Discord;
 
 public class DiscordWrapper
 {
-    public DiscordClient Client { get; }
-    public InteractivityExtension Interactivity { get; }
-    public SlashCommandsExtension Commands { get; }
+    public DiscordSocketClient Client { get; }
+    public SocketInteraction Interactivity { get; }
 
     public DiscordWrapper(IOptions<DiscordConfig> options, IServiceProvider services, ILoggerFactory loggerFactory)
     {
-        DiscordConfig optionsConfig = options.Value;
-        DiscordConfiguration config = new()
+        DiscordSocketConfig config = new()
         {
-            LoggerFactory = loggerFactory,
-            Token = optionsConfig.Token,
-            TokenType = TokenType.Bot,
-            Intents = DiscordIntents.All
+            AlwaysDownloadUsers = true,
+            GatewayIntents = GatewayIntents.All
         };
 
-        Client = new DiscordClient(config);
+        Client = new DiscordSocketClient(config);
 
-        InteractivityConfiguration iConfig = new()
+        InteractionServiceConfig sConfig = new()
         {
-            Timeout = TimeSpan.FromMinutes(2), AckPaginationButtons = true, ResponseBehavior = InteractionResponseBehavior.Ack
+            DefaultRunMode = RunMode.Async,
+            EnableAutocompleteHandlers = false,
         };
-        Interactivity = Client.UseInteractivity(iConfig);
-
-        SlashCommandsConfiguration sConfig = new()
-        {
-            Services = services
-        };
-        Commands = Client.UseSlashCommands(sConfig);
+        Interactivity = SocketInteraction(Client);
 
         Client.Logger.LogInformation("Starting Bot");
     }

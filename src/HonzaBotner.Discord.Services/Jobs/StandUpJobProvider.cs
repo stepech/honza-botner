@@ -4,11 +4,11 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using DSharpPlus;
-using DSharpPlus.Entities;
+using Discord;
 using HonzaBotner.Discord.Services.Helpers;
 using HonzaBotner.Discord.Services.Options;
 using HonzaBotner.Scheduler.Contract;
+using HonzaBotner.Services.Contract.Dto;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -60,19 +60,21 @@ public class StandUpJobProvider : IJob
 
         try
         {
-            DiscordChannel channel = await _discord.Client.GetChannelAsync(_commonOptions.StandUpChannelId);
+            var channel = await _discord.Client.GetChannelAsync(_commonOptions.StandUpChannelId) as ITextChannel;
+
+            if (channel is null) return;
 
             var ok = new StandUpStats();
             var fail = new StandUpStats();
 
-            List<DiscordMessage> messageList = new();
-            messageList.AddRange(await channel.GetMessagesAsync());
+            List<IMessage> messageList = new();
+            messageList.AddRange(channel.GetMessagesAsync().GetAsyncEnumerator().Current);
 
             while (messageList.LastOrDefault()?.Timestamp.Date == yesterday)
             {
                 int messagesCount = messageList.Count;
                 messageList.AddRange(
-                    await channel.GetMessagesBeforeAsync(messageList.Last().Id)
+                    channel.GetMessagesAsync(fromMessage:messageList.Last(), Direction.Before).GetAsyncEnumerator().Current
                 );
 
                 // No new data.
@@ -82,7 +84,7 @@ public class StandUpJobProvider : IJob
                 }
             }
 
-            foreach (DiscordMessage msg in messageList.Where(msg => msg.Timestamp.Date == yesterday))
+            foreach (IMessage msg in messageList.Where(msg => msg.Timestamp.Date == yesterday))
             {
                 foreach (Match match in Regex.Matches(msg.Content))
                 {
@@ -100,10 +102,9 @@ public class StandUpJobProvider : IJob
                 }
             }
 
-            DiscordRole standupPingRole = channel.Guild.GetRole(_commonOptions.StandUpRoleId);
+            IRole standupPingRole = channel.Guild.GetRole(_commonOptions.StandUpRoleId);
 
-            var content = new DiscordMessageBuilder()
-                .WithContent($@"
+            var content = $@"
 Stand-up time @here!
 
 Results from <t:{((DateTimeOffset)today.AddDays(-1)).ToUnixTimeSeconds()}:D>:
@@ -112,11 +113,14 @@ all:        {ok.Add(fail)}
 completed:  {ok}
 failed:     {fail}
 ```
-||{standupPingRole.Mention}||")
-                .AddComponents(new DiscordButtonComponent(ButtonStyle.Primary, _buttonOptions.StandupSwitchPingId,
-                "Switch ping", emoji:new DiscordComponentEmoji("🔔")))
-                .WithAllowedMention(new RoleMention(standupPingRole));
-            await channel.SendMessageAsync(content);
+||{standupPingRole.Mention}||";
+
+            var button = new ComponentBuilder()
+                .WithButton("Switch ping",
+                    _buttonOptions.StandupSwitchPingId,
+                    emote: new Emoji("🔔"));
+            await channel.SendMessageAsync(content, components: button.Build(),
+                allowedMentions: new AllowedMentions { RoleIds = new List<ulong>{_commonOptions.StandUpRoleId} });
         }
         catch (Exception e)
         {

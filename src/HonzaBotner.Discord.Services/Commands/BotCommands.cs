@@ -1,17 +1,16 @@
 ﻿using System;
 using System.Reflection;
 using System.Threading.Tasks;
-using DSharpPlus;
-using DSharpPlus.Entities;
-using DSharpPlus.Exceptions;
-using DSharpPlus.SlashCommands;
+using Discord;
+using Discord.Interactions;
+using Discord.WebSocket;
 using HonzaBotner.Discord.Managers;
 using HonzaBotner.Discord.Services.Options;
 using Microsoft.Extensions.Options;
 
 namespace HonzaBotner.Discord.Services.Commands;
 
-public class BotCommands : ApplicationCommandModule
+public class BotCommands : InteractionModuleBase<SocketInteractionContext>
 {
     private readonly InfoOptions _infoOptions;
     private readonly IGuildProvider _guildProvider;
@@ -23,19 +22,19 @@ public class BotCommands : ApplicationCommandModule
     }
 
     [SlashCommand("bot", "Get info about bot. Version, source code, etc")]
-    public async Task InfoCommandAsync(InteractionContext ctx)
+    public async Task InfoCommandAsync()
     {
         const string content = "This bot is developed by the community.\n" +
                                "We will be happy if you join the development and help us further improve it.";
 
-        DiscordGuild guild = ctx.Guild ?? await _guildProvider.GetCurrentGuildAsync();
-        DiscordMember bot = await guild.GetMemberAsync(ctx.Client.CurrentUser.Id);
-        DiscordEmbedBuilder embed = new()
+        SocketGuild guild = _guildProvider.GetCurrentGuild();
+        IGuildUser bot = guild.GetUser(Context.Client.CurrentUser.Id);
+        EmbedBuilder embed = new()
             {
-                Author = new DiscordEmbedBuilder.EmbedAuthor { Name = bot.DisplayName, IconUrl = bot.AvatarUrl },
+                Author = new EmbedAuthorBuilder { Name = bot.DisplayName, IconUrl = bot.GetAvatarUrl() },
                 Title = "Information about the bot",
                 Description = content,
-                Color = DiscordColor.CornflowerBlue
+                Color = Color.Blue
             };
 
         string version = Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
@@ -47,42 +46,22 @@ public class BotCommands : ApplicationCommandModule
 
         embed.AddField("Version:", version);
 
-        var message = new DiscordInteractionResponseBuilder()
-            .AddEmbed(embed)
-            .AddComponents(
-                new DiscordLinkButtonComponent(
-                    _infoOptions.RepositoryUrl,
-                    "Source code",
-                    false,
-                    new DiscordComponentEmoji(DiscordEmoji.FromName(ctx.Client, ":scroll:"))
-                ),
-                new DiscordLinkButtonComponent(
-                    _infoOptions.IssueTrackerUrl,
-                    "Report an issue",
-                    false,
-                    new DiscordComponentEmoji(DiscordEmoji.FromName(ctx.Client, ":bug:"))
-                ),
-                new DiscordLinkButtonComponent(
-                    _infoOptions.ChangelogUrl,
-                    "News",
-                    false,
-                    new DiscordComponentEmoji(DiscordEmoji.FromName(ctx.Client, ":part_alternation_mark:"))
-                )
-            )
-            .AsEphemeral(false);
+        var buttons = new ComponentBuilder()
+            .WithButton("Source code", url: _infoOptions.RepositoryUrl, emote: new Emoji("📜"))
+            .WithButton("Report an issue", url: _infoOptions.IssueTrackerUrl, emote: new Emoji("🐛"))
+            .WithButton("News", url: _infoOptions.ChangelogUrl, emote: new Emoji("〽️"));
 
-        await ctx.CreateResponseAsync(message);
+        await RespondAsync(embed: embed.Build(), components: buttons.Build());
     }
 
     [SlashCommand("ping", "pong?")]
     public async Task PingCommandAsync(InteractionContext ctx)
     {
-        await ctx.CreateResponseAsync($"Pong! Latency: {ctx.Client.Ping} ms");
+        await RespondAsync($"Pong!");
     }
 
-    [SlashCommandGroup("buttons", "Module used to edit button interactions on messages")]
-    [SlashCommandPermissions(Permissions.ManageMessages)]
-    public class ButtonCommands : ApplicationCommandModule
+    [Group("buttons", "Commands to manage buttons")]
+    public class ButtonCommands : InteractionModuleBase<SocketInteractionContext>
     {
         private readonly IButtonManager _buttonManager;
 
@@ -93,53 +72,51 @@ public class BotCommands : ApplicationCommandModule
 
         [SlashCommand("remove","Deletes all button interactions on the message")]
         public async Task RemoveButtons(
-            InteractionContext ctx,
-            [Option("message-link", "URL  of the message")] string url)
+            [Summary("message-link", "URL  of the message")] string url)
         {
-            DiscordGuild guild = ctx.Guild;
-            DiscordMessage? message = await DiscordHelper.FindMessageFromLink(guild, url);
-            if (message is null)
+            SocketGuild guild = Context.Guild;
+            if (await DiscordHelper.FindMessageFromLink(guild, url) is not IUserMessage message)
             {
-                throw new ArgumentOutOfRangeException($"Couldn't find message with link: {url}");
+                await RespondAsync($"Couldn't find message with link: {url}", ephemeral:true);
+                return;
             }
 
             try
             {
                 await _buttonManager.RemoveButtonsFromMessage(message);
             }
-            catch (UnauthorizedException)
+            catch (Exception)
             {
-                await ctx.CreateResponseAsync("Error: You can only edit messages by this bot.");
+                await RespondAsync("Error: You can only edit messages by this bot.", ephemeral: true);
                 return;
             }
 
-            await ctx.CreateResponseAsync("Removed buttons");
+            await RespondAsync("Removed buttons");
         }
 
         [SlashCommand("setup","Marks message as verification message")]
         public async Task SetupButtons(
-            InteractionContext ctx,
-            [Option("message-link", "URL  of the message")] string url
+            [Summary("message-link", "URL  of the message")] string url
         )
         {
-            DiscordGuild guild = ctx.Guild;
-            DiscordMessage? message = await DiscordHelper.FindMessageFromLink(guild, url);
-            if (message == null)
+            SocketGuild guild = Context.Guild;
+            if (await DiscordHelper.FindMessageFromLink(guild, url) is not IUserMessage message)
             {
-                throw new ArgumentOutOfRangeException($"Couldn't find message with link: {url}");
+                await RespondAsync($"Couldn't find message with link: {url}", ephemeral: true);
+                return;
             }
 
             try
             {
                 await _buttonManager.SetupVerificationButtons(message);
             }
-            catch (UnauthorizedException)
+            catch (Exception)
             {
-                await ctx.CreateResponseAsync("Error: You can only edit messages by this bot.");
+                await RespondAsync("Error: You can only edit messages by this bot.",ephemeral:true);
                 return;
             }
 
-            await ctx.CreateResponseAsync("Added verification buttons to the message.");
+            await RespondAsync("Added verification buttons to the message.");
         }
     }
 }

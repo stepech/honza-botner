@@ -1,7 +1,6 @@
 ﻿using System;
-using System.Threading.Tasks;
-using DSharpPlus;
-using DSharpPlus.Entities;
+using Discord;
+using Discord.WebSocket;
 using Microsoft.Extensions.Options;
 
 namespace HonzaBotner.Discord;
@@ -9,7 +8,7 @@ namespace HonzaBotner.Discord;
 public class ConfigGuildProvider : IGuildProvider
 {
     public ulong GuildId { get; }
-    private readonly DiscordClient _client;
+    private readonly DiscordSocketClient _client;
 
     public ConfigGuildProvider(DiscordWrapper wrapper, IOptions<DiscordConfig> config)
     {
@@ -21,8 +20,8 @@ public class ConfigGuildProvider : IGuildProvider
         _client = wrapper.Client;
     }
 
-    public Task<DiscordGuild> GetCurrentGuildAsync()
+    public SocketGuild GetCurrentGuild()
     {
-        return _client.GetGuildAsync(GuildId);
+        return _client.GetGuild(GuildId);
     }
 }

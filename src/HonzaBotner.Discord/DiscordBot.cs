@@ -1,11 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using DSharpPlus;
-using DSharpPlus.Entities;
-using DSharpPlus.EventArgs;
-using DSharpPlus.SlashCommands;
-using DSharpPlus.SlashCommands.EventArgs;
+using Discord.WebSocket;
 using HonzaBotner.Discord.Extensions;
 using HonzaBotner.Discord.Managers;
 using Microsoft.Extensions.Logging;
@@ -21,25 +17,29 @@ internal class DiscordBot : IDiscordBot
     private readonly IVoiceManager _voiceManager;
     private readonly DiscordConfig _discordOptions;
 
-    private DiscordClient Client => _discordWrapper.Client;
+    private DiscordSocketClient Client => _discordWrapper.Client;
     private SlashCommandsExtension Commands => _discordWrapper.Commands;
+
+    private readonly ILogger<DiscordBot> _logger;
 
     public DiscordBot(DiscordWrapper discordWrapper,
         EventHandler.EventHandler eventHandler,
         CommandsConfigurator commandsConfigurator,
         IVoiceManager voiceManager,
-        IOptions<DiscordConfig> discordOptions)
+        IOptions<DiscordConfig> discordOptions,
+        ILogger<DiscordBot> logger)
     {
         _discordWrapper = discordWrapper;
         _eventHandler = eventHandler;
         _commandsConfigurator = commandsConfigurator;
         _voiceManager = voiceManager;
         _discordOptions = discordOptions.Value;
+        _logger = logger;
     }
 
     public async Task Run(CancellationToken cancellationToken)
     {
-        Client.Ready += Client_Ready;
+        Client.LoggedIn += Client_Ready;
         Client.GuildAvailable += Client_GuildAvailable;
         Client.ClientErrored += Client_ClientError;
         Client.GuildDownloadCompleted += Client_GuildDownloadCompleted;
@@ -50,9 +50,9 @@ internal class DiscordBot : IDiscordBot
         Commands.AutocompleteErrored += Commands_AutocompleteErrored;
 
         Client.ComponentInteractionCreated += Client_ComponentInteractionCreated;
-        Client.MessageReactionAdded += Client_MessageReactionAdded;
-        Client.MessageReactionRemoved += Client_MessageReactionRemoved;
-        Client.VoiceStateUpdated += Client_VoiceStateUpdated;
+        Client.ReactionAdded += Client_MessageReactionAdded;
+        Client.ReactionRemoved += Client_MessageReactionRemoved;
+        Client.UserVoiceStateUpdated += Client_VoiceStateUpdated;
         Client.GuildMemberUpdated += Client_GuildMemberUpdated;
         Client.ChannelCreated += Client_ChannelCreated;
         Client.ThreadCreated += Client_ThreadCreated;
@@ -63,15 +63,15 @@ internal class DiscordBot : IDiscordBot
         await Task.Delay(-1, cancellationToken);
     }
 
-    private Task Client_Ready(DiscordClient sender, ReadyEventArgs e)
+    private Task Client_Ready()
     {
-        sender.Logger.LogInformation("Client is ready to process events");
+        _logger.LogInformation("Client is ready to process events");
         return Task.CompletedTask;
     }
 
-    private Task Client_GuildAvailable(DiscordClient sender, GuildCreateEventArgs e)
+    private Task Client_GuildAvailable(SocketGuild guild)
     {
-        sender.Logger.LogInformation("Guild available: {GuildName}", e.Guild.Name);
+        _logger.LogInformation("Guild available: {GuildName}", guild.Name);
         return Task.CompletedTask;
     }
 

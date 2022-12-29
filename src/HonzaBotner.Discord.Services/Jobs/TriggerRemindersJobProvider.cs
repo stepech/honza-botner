@@ -3,6 +3,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Discord;
 using DSharpPlus.Entities;
 using DSharpPlus.Exceptions;
 using HonzaBotner.Discord.Managers;
@@ -59,7 +60,7 @@ public class TriggerRemindersJobProvider : IJob
     {
         try
         {
-            DiscordChannel channel = await _discord.Client.GetChannelAsync(reminder.ChannelId);
+            ITextChannel? channel = await _discord.Client.GetChannelAsync(reminder.ChannelId) as ITextChannel;
             DiscordMessage message = await channel.GetMessageAsync(reminder.MessageId);
             DiscordEmoji emoji = DiscordEmoji.FromUnicode(_reminderOptions.JoinEmojiName);
 
@@ -98,7 +99,7 @@ public class TriggerRemindersJobProvider : IJob
             remindedUsers.Append(" - nezapomeň" + (receivers.Count > 1 ? "te" : "") + " na "
                                  + reminder.Content);
 
-            DiscordEmbed expiredEmbed = await _reminderManager.CreateExpiredReminderEmbedAsync(reminder);
+            Embed expiredEmbed = await _reminderManager.CreateExpiredReminderEmbedAsync(reminder);
 
             // Expire old reaction message.
             await message.ModifyAsync("", expiredEmbed);

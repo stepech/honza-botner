@@ -1,4 +1,3 @@
-using HonzaBotner.Discord.Services.Commands;
 using HonzaBotner.Database;
 using HonzaBotner.Discord;
 using HonzaBotner.Discord.EventHandler;
@@ -37,7 +36,6 @@ public class Startup
         services.AddControllers();
 
         string connectionString = PsqlConnectionStringParser.GetEFConnectionString(Configuration["DATABASE_URL"]);
-        ulong? guildId = Configuration.GetSection("Discord").GetValue<ulong>("GuildId");
 
         services
             .AddDbContext<HonzaBotnerDbContext>(options =>
@@ -71,19 +69,6 @@ public class Startup
                         .AddEventHandler<ThreadHandler>()
                         .AddEventHandler<StandupButtonHandler>()
                         ;
-                }, commands =>
-                {
-                    commands.RegisterCommands<BotCommands>();
-                    commands.RegisterCommands<EmoteCommands>(guildId);
-                    commands.RegisterCommands<FunCommands>();
-                    commands.RegisterCommands<MemberCommands>(guildId);
-                    commands.RegisterCommands<MessageCommands>(guildId);
-                    commands.RegisterCommands<ModerationCommands>(guildId);
-                    commands.RegisterCommands<PinCommands>(guildId);
-                    commands.RegisterCommands<PollCommands>(guildId);
-                    commands.RegisterCommands<ReminderCommands>(guildId);
-                    commands.RegisterCommands<VoiceCommands>(guildId);
-                    commands.RegisterCommands<NewsManagementCommands>(guildId);
                 }
             )
 

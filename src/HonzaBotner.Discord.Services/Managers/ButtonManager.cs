@@ -1,7 +1,6 @@
 using System.Linq;
 using System.Threading.Tasks;
-using DSharpPlus;
-using DSharpPlus.Entities;
+using Discord;
 using HonzaBotner.Discord.Managers;
 using HonzaBotner.Discord.Services.Options;
 using HonzaBotner.Discord.Utils;
@@ -26,7 +25,7 @@ public class ButtonManager : IButtonManager
         _translation = translation;
     }
 
-    public async Task SetupVerificationButtons(DiscordMessage message)
+    public async Task SetupVerificationButtons(IUserMessage message)
     {
         if (_buttonOptions.VerificationId is null || _buttonOptions.StaffVerificationId is null)
         {
@@ -34,36 +33,34 @@ public class ButtonManager : IButtonManager
             return;
         }
 
-        if (_buttonOptions.CzechChannelsIds?.Contains(message.ChannelId) ?? false)
+        if (_buttonOptions.CzechChannelsIds?.Contains(message.Channel.Id) ?? false)
         {
             _translation.SetLanguage(ITranslation.Language.Czech);
         }
 
-        var builder = new DiscordMessageBuilder()
-            .WithContent(message.Content)
-            .AddComponents(
-                new DiscordButtonComponent(
-                    ButtonStyle.Primary,
-                    _buttonOptions.VerificationId,
-                    _translation["VerifyRolesButton"],
-                    false,
-                    new DiscordComponentEmoji("✅")
-                ),
-                new DiscordButtonComponent(
-                    ButtonStyle.Secondary,
-                    _buttonOptions.StaffVerificationId,
-                    _translation["VerifyStaffRolesButton"],
-                    false,
-                    new DiscordComponentEmoji("👑")
-                )
+        var builder = new ComponentBuilder()
+            .WithButton(
+                _translation["VerifyRolesButton"],
+                _buttonOptions.VerificationId,
+                ButtonStyle.Primary,
+                new Emoji("✅")
+            )
+            .WithButton(
+                _translation["VerifyStaffRolesButton"],
+                _buttonOptions.StaffVerificationId,
+                ButtonStyle.Secondary,
+                new Emoji("👑")
             );
 
-        await message.ModifyAsync(builder);
+        await message.ModifyAsync(properties =>
+        {
+            properties.Content = message.Content;
+            properties.Components = builder.Build();
+        });
     }
 
-    public async Task RemoveButtonsFromMessage(DiscordMessage target)
+    public async Task RemoveButtonsFromMessage(IUserMessage target)
     {
-        DiscordMessageBuilder builder = new DiscordMessageBuilder().WithContent(target.Content);
-        await target.ModifyAsync(builder);
+        await target.ModifyAsync(properties => properties.Content = target.Content);
     }
 }
