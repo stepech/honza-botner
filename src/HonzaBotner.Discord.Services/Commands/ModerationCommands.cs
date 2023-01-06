@@ -100,6 +100,38 @@ public class ModerationCommands : ApplicationCommandModule
         }
     }
 
+    [ContextMenu(ApplicationCommandType.MessageContextMenu, "report")]
+    public async Task ReportMenuAsync(ContextMenuContext ctx)
+    {
+        string modalId = $"report-{ctx.User.Id}-{ctx.TargetMessage.Id}";
+        string reasonId = "id-reason";
+
+        var modal = new DiscordInteractionResponseBuilder()
+            .WithTitle("Submit silent report for message")
+            .WithCustomId(modalId)
+            .AddComponents(new TextInputComponent("Reason:", reasonId,
+                "Fill in the reason/context.", required: true,
+                style: TextInputStyle.Paragraph, min_length: 20));
+
+        await ctx.CreateResponseAsync(InteractionResponseType.Modal, modal);
+        var interactivity = ctx.Client.GetInteractivity();
+        var modalReason = await interactivity
+            .WaitForModalAsync(modalId, ctx.User, TimeSpan.FromMinutes(10));
+
+        if (modalReason.TimedOut)
+        {
+            return;
+        }
+
+        await modalReason.Result.Interaction.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource,
+            new DiscordInteractionResponseBuilder().WithContent(
+                $"Your report on {ctx.TargetMember.DisplayName} was accepted and will be reviewed by server moderators." +
+                "Whether to take some action and how severe will be up to the moderators now." +
+                "Feel free to contact moderators with any further information."));
+
+
+    }
+
     [SlashCommand("show", "Show moderation entry with provided Id.")]
     public async Task ShowCommandAsync(
         InteractionContext ctx,
@@ -134,11 +166,15 @@ public class ModerationCommands : ApplicationCommandModule
             try
             {
                 issuer = ctx.Guild.GetMemberAsync(warning.IssuerId).Result;
+            }
+            catch (Exception)
+            {}
+            try
+            {
                 target = ctx.Guild.GetMemberAsync(warning.UserId).Result;
             }
-            catch (NotFoundException)
-            {
-            }
+            catch (Exception)
+            {}
 
             return ($"#{warning.Id}\t" +
                     $"{target?.DisplayName ?? warning.UserId.ToString()}\t" +
